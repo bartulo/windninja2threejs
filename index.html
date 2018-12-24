@@ -45,6 +45,7 @@
 
 			uniform sampler2D tOne;
 			uniform sampler2D tSec;
+			uniform sampler2D mdt;
 			uniform float u_rand;
 
 			varying vec2 vUv;
@@ -59,22 +60,31 @@
 				return texture2D( tSec, pos ).rg;
 			}
 			
+			float mdt_lookup(const vec2 pos) {
+				return texture2D( mdt, pos ).r;
+			}
+			
 			void main(void)
 			{
 				vec2 st = vUv;
 				vec4 Cb = texture2D(tOne, st);
 				vec2 wind = wind_lookup( (Cb.xy + 5.) / 10. );
-				vec3 finale = vec3( Cb.rg - (wind - vec2(0.23, 0.62)) * .02, Cb.b);
+				float dem = mdt_lookup( (Cb.xy + 5.) / 10. );
+				vec3 finale = vec3( Cb.rg - (wind - vec2(0.23, 0.62)) * .02, dem);
 				
 				vec2 seed = (finale.xy + st) * u_rand;
-				float drop = step(0.999, rand(seed));
+				//~ float drop = step(0.9999, rand(seed));
+				float drop = step(-5., Cb.x);
 				
 				vec2 random_pos = vec2(rand(seed + 1.3), rand(seed + 2.1));
+				float zeta = mdt_lookup( random_pos );
 				random_pos = (random_pos * 10.) - 5.;
+				vec3 r = vec3( random_pos, zeta);
 				
-				finale.xy = mix(finale.xy, random_pos, drop);
+				//~ finale.xy = mix(finale.xy, random_pos, drop);
+				finale.xyz = mix(r, finale.xyz, drop);
 				
-			    gl_FragColor= vec4( finale.xy, 1., 1. );
+			    gl_FragColor= vec4( finale.xyz, 1. );
 				
 			}
 			
@@ -238,12 +248,18 @@
 				var mapa = new THREE.TextureLoader().load('data/viento2.png');
 				mapa.minFilter = THREE.NearestFilter;
 				mapa.magFilter = THREE.NearestFilter;
+				
+				var mdt = new THREE.TextureLoader().load('data/mdt2.png');
+				mdt.minFilter = THREE.NearestFilter;
+				mdt.magFilter = THREE.NearestFilter;
+
 				dataTex.needsUpdate = true;
 			
 				uniforms = {    // custom uniforms (your textures)
 
 					tOne: { type: "t", value: dataTex },
 					tSec: { type: "t", value: mapa },
+					mdt: { type: "t", value: mdt },
 					u_rand: { type: "f", value: Math.random() },
 					a: { type: "f", value: 0 }
 				};
