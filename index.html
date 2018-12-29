@@ -46,6 +46,7 @@
 			uniform sampler2D tOne;
 			uniform sampler2D tSec;
 			uniform sampler2D mdt;
+			uniform sampler2D strength;
 			uniform float u_rand;
 
 			varying vec2 vUv;
@@ -61,8 +62,9 @@
 				vec2 st = vUv;
 				vec4 Cb = texture2D(tOne, st);
 				vec2 wind = texture2D( tSec, (Cb.xy + 5.) / 10. ).rg;
+				float s = texture2D( strength, (Cb.xy + 5.) / 10. ).r;
 				float dem = texture2D( mdt, (Cb.xy + 5.) / 10. ).r;
-				vec3 finale = vec3( Cb.rg - (wind - vec2(0.23, 0.62)) * .02, dem);
+				vec3 finale = vec3( Cb.rg - (wind - vec2(0.23, 0.62)) * .04, dem);
 				
 				vec2 seed = (finale.xy + st) * u_rand;
 				//~ float drop = step(0.9999, rand(seed));
@@ -78,10 +80,8 @@
 				
 				//~ finale.xy = mix(finale.xy, random_pos, drop);
 				finale.xyz = mix(r, finale.xyz, drop);
-				vec2 fuerza = smoothstep(0.3, 1., wind);
-				float fuer = length(fuerza);
 				
-			    gl_FragColor= vec4( finale.xyz, fuer );
+			    gl_FragColor= vec4( finale.xyz, s );
 				
 			}
 			
@@ -260,6 +260,10 @@
 				var mdt = new THREE.TextureLoader().load('data/mdt2.png');
 				mdt.minFilter = THREE.NearestFilter;
 				mdt.magFilter = THREE.NearestFilter;
+
+				var strength = new THREE.TextureLoader().load('data/strength.png');
+				strength.minFilter = THREE.NearestFilter;
+				strength.magFilter = THREE.NearestFilter;
 				
 				var gradiente = new THREE.TextureLoader().load('data/gradiente2.png');
 
@@ -269,6 +273,7 @@
 
 					tOne: { type: "t", value: dataTex },
 					tSec: { type: "t", value: mapa },
+					strength: { type: "t", value: strength },
 					mdt: { type: "t", value: mdt },
 					u_rand: { type: "f", value: Math.random() },
 				};
@@ -369,11 +374,11 @@
 
 				bufferMaterial.uniforms.tOne.value = textureA.texture;
 
-				//~ renderer.render( scene, camera );
-				renderer.render( scene, camera, textureNew );
-				renderer.render( sceneComp, orthoCamera, textureComp );
-				renderer.render( sceneScreen, orthoCamera, textureOld );
-				renderer.render( sceneScreen, orthoCamera );
+				renderer.render( scene, camera );
+				//~ renderer.render( scene, camera, textureNew );
+				//~ renderer.render( sceneComp, orthoCamera, textureComp );
+				//~ renderer.render( sceneScreen, orthoCamera, textureOld );
+				//~ renderer.render( sceneScreen, orthoCamera );
 				
 			}
 
