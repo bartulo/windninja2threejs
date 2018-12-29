@@ -56,35 +56,32 @@
 			    return fract(sin(t) * (rand_constants.z + t));
 			}
 			
-			vec2 wind_lookup(const vec2 pos) {
-				return texture2D( tSec, pos ).rg;
-			}
-			
-			float mdt_lookup(const vec2 pos) {
-				return texture2D( mdt, pos ).r;
-			}
-			
 			void main(void)
 			{
 				vec2 st = vUv;
 				vec4 Cb = texture2D(tOne, st);
-				vec2 wind = wind_lookup( (Cb.xy + 5.) / 10. );
-				float dem = mdt_lookup( (Cb.xy + 5.) / 10. );
+				vec2 wind = texture2D( tSec, (Cb.xy + 5.) / 10. ).rg;
+				float dem = texture2D( mdt, (Cb.xy + 5.) / 10. ).r;
 				vec3 finale = vec3( Cb.rg - (wind - vec2(0.23, 0.62)) * .02, dem);
 				
 				vec2 seed = (finale.xy + st) * u_rand;
 				//~ float drop = step(0.9999, rand(seed));
-				float drop = step(-5., Cb.x);
+				vec2 drop_ws = step(vec2(-5.), Cb.xy);
+				vec2 drop_en = step(vec2(-5.), -Cb.xy);
+				
+				float drop = drop_ws.x * drop_ws.y * drop_en.x * drop_en.y;
 				
 				vec2 random_pos = vec2(rand(seed + 1.3), rand(seed + 2.1));
-				float zeta = mdt_lookup( random_pos );
+				float zeta = texture2D( mdt, random_pos ).r;
 				random_pos = (random_pos * 10.) - 5.;
 				vec3 r = vec3( random_pos, zeta);
 				
 				//~ finale.xy = mix(finale.xy, random_pos, drop);
 				finale.xyz = mix(r, finale.xyz, drop);
+				vec2 fuerza = smoothstep(0.3, 1., wind);
+				float fuer = length(fuerza);
 				
-			    gl_FragColor= vec4( finale.xyz, 1. );
+			    gl_FragColor= vec4( finale.xyz, fuer );
 				
 			}
 			
@@ -96,7 +93,7 @@
 			void main()
 			{
 				vUv = vec2( uv );
-				vec4 mvPosition = modelViewMatrix * vec4( position.x, position.y, position.z, 1.0 );
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
 				gl_Position = projectionMatrix * mvPosition;
 			}
 			
@@ -107,12 +104,17 @@
 			precision highp float;
 			#endif
 			
-			uniform sampler2D estela;
 			varying vec2 vUv;
-
+			varying vec3 pos;
+			uniform sampler2D nano;
+			uniform sampler2D gradiente;
+			uniform sampler2D mdt;
+			varying float fuerza;
+			
 			void main(void)
 			{
-			    gl_FragColor= vec4(1.0);
+				vec3 grad = texture2D( gradiente, vec2(fuerza, 0.)).rgb;
+			    gl_FragColor= vec4( grad,  1. );
 				
 			}
 		</script>
@@ -121,6 +123,8 @@
 			uniform sampler2D positions;
 			uniform float pointSize;
 			varying vec2 vUv;
+			varying vec3 pos;
+			varying float fuerza;
 			
 			void main(void)
 			{
@@ -128,9 +132,12 @@
 				
 				vec3 pos = texture2D( positions, uv ).xyz;
 				
-				gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );
+				fuerza = texture2D( positions, uv ).a;
 				
-				gl_PointSize = pointSize;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );
+				//~ gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+				
+				gl_PointSize = 1.;
 				
 			}
 		</script>
@@ -209,8 +216,8 @@
 				textureA = new THREE.WebGLRenderTarget(256, 256, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter});
 				textureB = new THREE.WebGLRenderTarget(256, 256, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter});
 				
-				textureA.texture.format = THREE.RGBFormat;
-				textureB.texture.format = THREE.RGBFormat;
+				textureA.texture.format = THREE.RGBAFormat;
+				textureB.texture.format = THREE.RGBAFormat;
 				
 				textureA.texture.type = THREE.FloatType;
 				textureB.texture.type = THREE.FloatType;
@@ -226,12 +233,13 @@
 				//bufferGeometry.addAttribute( 'position', new THREE.BufferAttribute(new Float32Array([ -1,-1,0, 1,-1,0, 1,1,0, -1,-1,0, 1,1,0, -1,1,0]), 3 ) );
 				//bufferGeometry.addAttribute( 'uv', new THREE.BufferAttribute( new Float32Array([ 0,1, 1,1, 1,0,     0,1, 1,0, 0,0 ]), 2 ) ); 
 				
-				var len = 256 * 256 * 3;
+				var len = 256 * 256 * 4;
 				var data = new Float32Array(len);
 				for (i = 0; i < 256 * 256; i++) {
-					data[i*3] = (Math.random()) * 10 - 5;
-					data[(i*3)+1] =  (Math.random()) *10 - 5 ;
-					data[(i*3)+2] = 0;
+					data[i*4] = (Math.random()) * 10 - 5;
+					data[(i*4)+1] =  (Math.random()) *10 - 5 ;
+					data[(i*4)+2] = 0;
+					data[(i*4)+3] = .5;
 				}
 				console.log(data);
 				var vertShader = document.getElementById('vertex_shh').innerHTML;
@@ -241,7 +249,7 @@
 				var fragShaderComp = document.getElementById('comp_fs').innerHTML;
 				var vertexShaderComp = document.getElementById('comp_vs').innerHTML;
 		
-				dataTex = new THREE.DataTexture(data, 256, 256, THREE.RGBFormat, THREE.FloatType);
+				dataTex = new THREE.DataTexture(data, 256, 256, THREE.RGBAFormat, THREE.FloatType);
 				dataTex.minFilter = THREE.NearestFilter;
 				dataTex.magFilter = THREE.NearestFilter;
 				
@@ -252,6 +260,8 @@
 				var mdt = new THREE.TextureLoader().load('data/mdt2.png');
 				mdt.minFilter = THREE.NearestFilter;
 				mdt.magFilter = THREE.NearestFilter;
+				
+				var gradiente = new THREE.TextureLoader().load('data/gradiente2.png');
 
 				dataTex.needsUpdate = true;
 			
@@ -261,7 +271,6 @@
 					tSec: { type: "t", value: mapa },
 					mdt: { type: "t", value: mdt },
 					u_rand: { type: "f", value: Math.random() },
-					a: { type: "f", value: 0 }
 				};
 				
 				bufferMaterial = new THREE.ShaderMaterial({
@@ -302,8 +311,10 @@
 				
 				pointsMaterial = new THREE.ShaderMaterial({
 					uniforms: {
+						gradiente: {type:"t", value: gradiente },
+						nano: {type:"t", value: mapa },
+						mdt: {type:"t", value: mdt },
 						positions: {type:"t", value: null },
-						estela: {type:"t", value: null },
 						pointSize: {type:"f", value: 1 }
 					},
 					vertexShader: points_vs,
@@ -323,15 +334,6 @@
 				
 				var particles = new THREE.Points( pointsGeometry, pointsMaterial );
 				scene.add( particles );
-				
-				var lineMat = new THREE.LineBasicMaterial();
-				var lineGeom = new THREE.Geometry();
-				lineGeom.vertices.push(
-					new THREE.Vector3(-10,0,0),
-					new THREE.Vector3(10,0,0)
-					);
-				var line = new THREE.Line( lineGeom, lineMat);
-				scene.add(line);
 				
 				window.addEventListener( 'resize', onWindowResize, false );
 
@@ -367,6 +369,7 @@
 
 				bufferMaterial.uniforms.tOne.value = textureA.texture;
 
+				//~ renderer.render( scene, camera );
 				renderer.render( scene, camera, textureNew );
 				renderer.render( sceneComp, orthoCamera, textureComp );
 				renderer.render( sceneScreen, orthoCamera, textureOld );
