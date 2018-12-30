@@ -61,22 +61,22 @@
 			{
 				vec2 st = vUv;
 				vec4 Cb = texture2D(tOne, st);
-				vec2 wind = texture2D( tSec, (Cb.xy + 5.) / 10. ).rg;
-				float s = texture2D( strength, (Cb.xy + 5.) / 10. ).r;
-				float dem = texture2D( mdt, (Cb.xy + 5.) / 10. ).r;
-				vec3 finale = vec3( Cb.rg - (wind - vec2(0.23, 0.62)) * .04, dem);
+				vec2 wind = texture2D( tSec, (Cb.xy + 5000.) / 10000. ).rg;
+				float s = texture2D( strength, (Cb.xy + 5000.) / 10000. ).r;
+				float dem = texture2D( mdt, (Cb.xy + 5000.) / 10000. ).r;
+				vec3 finale = vec3( Cb.rg - (wind - vec2(0.23, 0.62)) * 10., dem * 1000.);
 				
 				vec2 seed = (finale.xy + st) * u_rand;
 				//~ float drop = step(0.9999, rand(seed));
-				vec2 drop_ws = step(vec2(-5.), Cb.xy);
-				vec2 drop_en = step(vec2(-5.), -Cb.xy);
+				vec2 drop_ws = step(vec2(-5000.), Cb.xy);
+				vec2 drop_en = step(vec2(-5000.), -Cb.xy);
 				
 				float drop = drop_ws.x * drop_ws.y * drop_en.x * drop_en.y;
 				
 				vec2 random_pos = vec2(rand(seed + 1.3), rand(seed + 2.1));
 				float zeta = texture2D( mdt, random_pos ).r;
-				random_pos = (random_pos * 10.) - 5.;
-				vec3 r = vec3( random_pos, zeta);
+				random_pos = (random_pos * 10000.) - 5000.;
+				vec3 r = vec3( random_pos, zeta * 1000.);
 				
 				//~ finale.xy = mix(finale.xy, random_pos, drop);
 				finale.xyz = mix(r, finale.xyz, drop);
@@ -203,7 +203,7 @@
 
 				camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, .1, 30000 );
 				orthoCamera = new THREE.OrthographicCamera( -128, 128, 128, -128, .1, 1000 );
-				camera.position.z = 30;
+				camera.position.z = 3000;
 				orthoCamera.position.z = 2;
 
 				scene = new THREE.Scene();
@@ -236,8 +236,8 @@
 				var len = 256 * 256 * 4;
 				var data = new Float32Array(len);
 				for (i = 0; i < 256 * 256; i++) {
-					data[i*4] = (Math.random()) * 10 - 5;
-					data[(i*4)+1] =  (Math.random()) *10 - 5 ;
+					data[i*4] = (Math.random()) * 10000 - 5000;
+					data[(i*4)+1] =  (Math.random()) *10000 - 5000 ;
 					data[(i*4)+2] = 0;
 					data[(i*4)+3] = .5;
 				}
@@ -374,11 +374,11 @@
 
 				bufferMaterial.uniforms.tOne.value = textureA.texture;
 
-				renderer.render( scene, camera );
-				//~ renderer.render( scene, camera, textureNew );
-				//~ renderer.render( sceneComp, orthoCamera, textureComp );
-				//~ renderer.render( sceneScreen, orthoCamera, textureOld );
-				//~ renderer.render( sceneScreen, orthoCamera );
+				//~ renderer.render( scene, camera );
+				renderer.render( scene, camera, textureNew );
+				renderer.render( sceneComp, orthoCamera, textureComp );
+				renderer.render( sceneScreen, orthoCamera, textureOld );
+				renderer.render( sceneScreen, orthoCamera );
 				
 			}
 
