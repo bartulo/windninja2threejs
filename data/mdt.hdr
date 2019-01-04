@@ -1,0 +1,15 @@
+ENVI
+description = {
+/var/www/html/forex/prueba/data/mdt.bin}
+samples = 1024
+lines   = 1024
+bands   = 1
+header offset = 0
+file type = ENVI Standard
+data type = 2
+interleave = bsq
+byte order = 0
+map info = {UTM, 1, 1, 330200, 4468800, 11.71875, 11.71875, 30, North}
+coordinate system string = {PROJCS["ETRS89_UTM_zone_30N",GEOGCS["GCS_ETRS_1989",DATUM["D_ETRS_1989",SPHEROID["GRS_1980",6378137,298.257222101]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",-3],PARAMETER["scale_factor",0.9996],PARAMETER["false_easting",500000],PARAMETER["false_northing",0],UNIT["Meter",1]]}
+band names = {
+Band 1}
