@@ -60,21 +60,21 @@
 			{
 				vec2 st = vUv;
 				vec4 Cb = texture2D(tOne, st);
-				vec2 wind = texture2D( tSec, (Cb.xy + 5000.) / 10000. ).rg;
-				float dem = texture2D( mdt, (Cb.xy + 5000.) / 10000. ).r;
-				vec3 finale = vec3( Cb.rg - (wind - vec2(0.5, 0.)) * 10., dem * 2000.);
+				vec2 wind = texture2D( tSec, ( Cb.xy + 5000. ) / 10000. ).rg;
+				float dem = texture2D( mdt, ( Cb.xy + 5000. ) / 10000. ).r;
+				vec3 finale = vec3( Cb.rg - ( wind - vec2( 0.53, 0. ) ) * 10., dem * 2000.);
 				float s = length(wind - vec2(.5, 0));
 				
 				vec2 seed = (finale.xy + st) * u_rand;
-				//~ float drop = step(0.9999, rand(seed));
+				float drop_r = step(rand(seed), 0.999);
 				vec2 drop_ws = step(vec2(-5000.), Cb.xy);
 				vec2 drop_en = step(vec2(-5000.), -Cb.xy);
 				
-				float drop = drop_ws.x * drop_ws.y * drop_en.x * drop_en.y;
+				float drop = drop_ws.x * drop_ws.y * drop_en.x * drop_en.y * drop_r;
 				
-				vec2 random_pos = vec2(rand(seed + 1.3), rand(seed + 2.1));
+				vec2 random_pos = vec2( rand( seed + 1.3 ), rand( seed + 2.1 ) );
 				float zeta = texture2D( mdt, random_pos ).r;
-				random_pos = (random_pos * 10000.) - 5000.;
+				random_pos = ( random_pos * 10000. ) - 5000.;
 				vec3 r = vec3( random_pos, zeta * 2000.);
 				
 				//~ finale.xy = mix(finale.xy, random_pos, drop);
@@ -136,7 +136,7 @@
 				gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );
 				//~ gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 				
-				gl_PointSize = 1.;
+				gl_PointSize = 2.;
 				
 			}
 		</script>
@@ -157,7 +157,7 @@
 			void main() {
 				vec4 texelOld = texture2D(tOld, vUv);
 				vec4 texelNew = texture2D(tNew, vUv);
-				texelOld *= 0.92;
+				texelOld *= 0.93;
 				
 				// the expressions bellow are equivalent to
 				// if (texelOld.a < 0.2) texelOld.a = 0.0;
@@ -182,6 +182,94 @@
 			}
 		</script>
 
+		<script id="fondo_fs" type="x-shader/x-fragment">
+			#ifdef GL_ES
+			precision highp float;
+			#endif
+
+			varying vec2 vUv;
+			
+			void main() {
+				
+				gl_FragColor = vec4(0) ;
+			}
+		</script>
+		<script id="fondo_vs" type="x-shader/x-vertex">
+
+			varying vec2 vUv;
+			uniform sampler2D mdt;
+			
+			void main(void)
+			{
+				vUv = vec2( uv );
+				float zeta = texture2D(mdt, uv).r;
+				
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position.rg, zeta * 2000. -10., 1.0 );
+				
+			}
+		</script>
+
+		<script id="pnoa_fs" type="x-shader/x-fragment">
+			#ifdef GL_ES
+			precision highp float;
+			#endif
+
+			uniform sampler2D pnoa;
+			varying vec2 vUv;
+			
+			void main() {
+				
+				gl_FragColor = texture2D( pnoa, vUv ) ;
+			}
+		</script>
+		<script id="pnoa_vs" type="x-shader/x-vertex">
+
+			varying vec2 vUv;
+			uniform sampler2D mdt;
+			
+			void main(void)
+			{
+				vUv = vec2( uv );
+				float zeta = texture2D(mdt, uv).r;
+				
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position.rg, zeta * 2000. -10., 1.0 );
+				
+			}
+		</script>
+
+		<script id="final_fs" type="x-shader/x-fragment">
+			#ifdef GL_ES
+			precision highp float;
+			#endif
+
+			uniform sampler2D pnoa;
+			uniform sampler2D points;
+			varying vec2 vUv;
+			
+			void main() {
+				
+				vec4 p = texture2D( points, vUv ) ;
+				vec4 f = texture2D( pnoa, vUv ) ;
+				
+				float black = p.r + p.g + p.b;
+				float b = step( 0.01, black ) ;
+				vec4 fin = mix( f, p, b );
+				
+				gl_FragColor = fin ;
+			}
+		</script>
+		<script id="final_vs" type="x-shader/x-vertex">
+
+			varying vec2 vUv;
+			
+			void main(void)
+			{
+				vUv = vec2( uv );
+				
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+				
+			}
+		</script>
 
 		<script>
 
@@ -208,8 +296,8 @@
 				//~ init();
 				//~ animate();
 			//~ });
-				init();
-				animate();
+			init();
+			animate();
 
 			function init() {
 
@@ -228,6 +316,8 @@
 				bufferScene = new THREE.Scene();
 				sceneComp = new THREE.Scene();
 				sceneScreen = new THREE.Scene();
+				pnoaScene = new THREE.Scene();
+				finalScene = new THREE.Scene();
 				
 				textureA = new THREE.WebGLRenderTarget(256, 256, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter});
 				textureB = new THREE.WebGLRenderTarget(256, 256, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter});
@@ -264,10 +354,17 @@
 				var points_vs = document.getElementById('points_vs').innerHTML;
 				var fragShaderComp = document.getElementById('comp_fs').innerHTML;
 				var vertexShaderComp = document.getElementById('comp_vs').innerHTML;
+				var fondoVShader = document.getElementById('fondo_vs').innerHTML;
+				var fondoFShader = document.getElementById('fondo_fs').innerHTML;
+				var pnoaVShader = document.getElementById('pnoa_vs').innerHTML;
+				var pnoaFShader = document.getElementById('pnoa_fs').innerHTML;
+				var finalVShader = document.getElementById('final_vs').innerHTML;
+				var finalFShader = document.getElementById('final_fs').innerHTML;
 		
 				dataTex = new THREE.DataTexture(data, 256, 256, THREE.RGBAFormat, THREE.FloatType);
 				dataTex.minFilter = THREE.NearestFilter;
 				dataTex.magFilter = THREE.NearestFilter;
+				dataTex.needsUpdate = true;
 				
 				var mapa = new THREE.TextureLoader().load('data/gredos.png');
 				mapa.minFilter = THREE.NearestFilter;
@@ -278,8 +375,31 @@
 				mdt.magFilter = THREE.NearestFilter;
 				
 				var gradiente = new THREE.TextureLoader().load('data/gradiente2.png');
+				gradiente.minFilter = THREE.LinearFilter;
+				
+				var pnoa = new THREE.TextureLoader().load('data/pnoa.jpg');
+				
+				var fondoG = new THREE.PlaneGeometry(10000, 10000, 256, 256);
+				var fondoM = new THREE.ShaderMaterial( {
+					uniforms: {
+						mdt: {type: "t", value: mdt },
+					},
+					vertexShader: fondoVShader,
+					fragmentShader: fondoFShader
+				});
+				
+				var fondo = new THREE.Mesh(fondoG, fondoM);
 
-				dataTex.needsUpdate = true;
+				var pnoaM = new THREE.ShaderMaterial( {
+					uniforms:{
+						mdt: {type: "t", value: mdt },
+						pnoa: {type: "t", value: pnoa }
+					},
+					vertexShader: pnoaVShader,
+					fragmentShader: pnoaFShader
+				});
+				
+				var pnoaPlane = new THREE.Mesh(fondoG, pnoaM);
 			
 				uniforms = {    // custom uniforms (your textures)
 
@@ -288,6 +408,8 @@
 					mdt: { type: "t", value: mdt },
 					u_rand: { type: "f", value: Math.random() },
 				};
+				
+				pnoaScene.add(pnoaPlane);
 				
 				bufferMaterial = new THREE.ShaderMaterial({
 					uniforms: uniforms,
@@ -300,9 +422,10 @@
 				bufferPlane = new THREE.Mesh(bufferGeometry, bufferMaterial);
 				bufferScene.add(bufferPlane);
 
-				textureNew = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
-				textureOld = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
-				textureComp = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
+				textureNew = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter});
+				textureOld = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter});
+				textureComp = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter});
+				texturePnoa = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, { minFilter: THREE.NearestsFilter, magFilter: THREE.NearestFilter});
 				
 				uniformsComp = {
 					
@@ -322,8 +445,20 @@
 				
 				var sceneMaterial = new THREE.MeshBasicMaterial({ map: textureComp.texture });
 				var screenPlane = new THREE.Mesh(bufferGeometry, sceneMaterial);
+
+				var finalMaterial = new THREE.ShaderMaterial({
+					uniforms: {
+						pnoa: { type: "t", value: texturePnoa.texture },
+						points: { type: "t", value: textureComp.texture }
+					},
+					vertexShader: finalVShader,
+					fragmentShader: finalFShader
+				});
+				
+				var finalPlane = new THREE.Mesh(bufferGeometry, finalMaterial);
 				
 				sceneScreen.add(screenPlane);
+				finalScene.add(finalPlane);
 				
 				pointsMaterial = new THREE.ShaderMaterial({
 					uniforms: {
@@ -349,6 +484,7 @@
 				//pointsGeometry.addAttribute( 'position', new THREE.BufferAttribute(vertices, 3) );
 				
 				var particles = new THREE.Points( pointsGeometry, pointsMaterial );
+				scene.add( fondo );
 				scene.add( particles );
 				
 				window.addEventListener( 'resize', onWindowResize, false );
@@ -386,10 +522,12 @@
 				bufferMaterial.uniforms.tOne.value = textureA.texture;
 
 				//~ renderer.render( scene, camera );
+				renderer.render( pnoaScene, camera, texturePnoa );
 				renderer.render( scene, camera, textureNew );
 				renderer.render( sceneComp, orthoCamera, textureComp );
 				renderer.render( sceneScreen, orthoCamera, textureOld );
-				renderer.render( sceneScreen, orthoCamera );
+				renderer.render( finalScene, orthoCamera );
+				//~ renderer.render( sceneScreen, orthoCamera );
 				
 			}
 
