@@ -62,11 +62,11 @@
 				vec4 Cb = texture2D(tOne, st);
 				vec2 wind = texture2D( tSec, ( Cb.xy + 5000. ) / 10000. ).rg;
 				float dem = texture2D( mdt, ( Cb.xy + 5000. ) / 10000. ).r;
-				vec3 finale = vec3( Cb.rg - ( wind - vec2( 0.53, 0. ) ) * 10., dem * 2000.);
+				vec3 finale = vec3( Cb.rg - ( wind - vec2( 0.53, 0. ) ) * 5., dem * 2000.);
 				float s = length(wind - vec2(.5, 0));
 				
 				vec2 seed = (finale.xy + st) * u_rand;
-				float drop_r = step(rand(seed), 0.999);
+				float drop_r = step(rand(seed), 0.99);
 				vec2 drop_ws = step(vec2(-5000.), Cb.xy);
 				vec2 drop_en = step(vec2(-5000.), -Cb.xy);
 				
@@ -112,8 +112,9 @@
 			
 			void main(void)
 			{
-				vec3 grad = texture2D( gradiente, vec2(fuerza, 0.)).rgb;
-			    gl_FragColor= vec4( grad,  1. );
+				vec2 ramp_pos = vec2( fract( 16. * fuerza ), floor( 16. * fuerza ) / 16. );
+				vec3 grad = texture2D( gradiente, ramp_pos ).rgb;
+			    gl_FragColor= vec4( grad,  .1 );
 				
 			}
 		</script>
@@ -277,28 +278,38 @@
 
 			var camera, scene, bufferScene, orthoCamera, renderer, uniforms, textureA, textureB, dataTex, bufferMaterial, material_shh, pointsMaterial, texturePointsA, texturePointsB, mdt;
 
-			var colors;
+			var rampColors = {
+			    0.0: '#3288bd',
+			    0.1: '#66c2a5',
+			    0.2: '#abdda4',
+			    0.3: '#e6f598',
+			    0.4: '#fee08b',
+			    0.5: '#fdae61',
+			    0.6: '#f46d43',
+			    1.0: '#d53e4f'
+			};
 			
-			//~ var terrain = new THREE.TerrainLoader();
-			//~ terrain.load('data/mdt.bin', function(data) {
-				//~ datos = new Float32Array( 1024 * 1024 * 4 );
-				//~ for (i = 0; i < 1024 * 1024; i++ ) {
-					//~ datos[ 3 * i ] = data[i]
-				//~ }
-				
-				//~ console.log(datos);
-				
-				//~ mdt = new THREE.DataTexture(datos, 1024, 1024, THREE.RGBFormat, THREE.FloatType);
-				//~ mdt.needsUpdate = true;
-				//~ mdt.minFilter = THREE.LinearFilter;
-				//~ mdt.magFilter = THREE.NearestFilter;
-				//~ console.log(data);
-				//~ init();
-				//~ animate();
-			//~ });
+			function getColorRamp(colors) {
+			    const canvas = document.createElement('canvas');
+			    const ctx = canvas.getContext('2d');
+			
+			    canvas.width = 256;
+			    canvas.height = 1;
+			
+			    const gradient = ctx.createLinearGradient(0, 0, 256, 0);
+			    for (const stop in colors) {
+			        gradient.addColorStop(+stop, colors[stop]);
+			    }
+			
+			    ctx.fillStyle = gradient;
+			    ctx.fillRect(0, 0, 256, 1);
+			
+			    return new Uint8Array(ctx.getImageData(0, 0, 256, 1).data);
+			}
+
 			init();
 			animate();
-
+			
 			function init() {
 
 				container = document.getElementById( 'container' );
@@ -347,7 +358,7 @@
 					data[(i*4)+2] = 0;
 					data[(i*4)+3] = .5;
 				}
-				console.log(data);
+
 				var vertShader = document.getElementById('vertex_shh').innerHTML;
 				var fragShader = document.getElementById('fragment_shh').innerHTML;
 				var points_fs = document.getElementById('points_fs').innerHTML;
@@ -374,8 +385,9 @@
 				mdt.minFilter = THREE.LinearFilter;
 				mdt.magFilter = THREE.NearestFilter;
 				
-				var gradiente = new THREE.TextureLoader().load('data/gradiente2.png');
+				var gradiente = new THREE.DataTexture(getColorRamp(rampColors), 16, 16, THREE.RGBAFormat);
 				gradiente.minFilter = THREE.LinearFilter;
+				gradiente.needsUpdate = true;
 				
 				var pnoa = new THREE.TextureLoader().load('data/pnoa.jpg');
 				
@@ -416,8 +428,6 @@
 					vertexShader: vertShader,
 					fragmentShader: fragShader
 				});
-				
-				//~ var geometry = new THREE.PlaneGeometry(200, 200, 199, 199);
 				
 				bufferPlane = new THREE.Mesh(bufferGeometry, bufferMaterial);
 				bufferScene.add(bufferPlane);
@@ -521,12 +531,12 @@
 
 				bufferMaterial.uniforms.tOne.value = textureA.texture;
 
-				//~ renderer.render( scene, camera );
-				renderer.render( pnoaScene, camera, texturePnoa );
-				renderer.render( scene, camera, textureNew );
-				renderer.render( sceneComp, orthoCamera, textureComp );
-				renderer.render( sceneScreen, orthoCamera, textureOld );
-				renderer.render( finalScene, orthoCamera );
+					//~ renderer.render( scene, camera );
+					renderer.render( pnoaScene, camera, texturePnoa );
+					renderer.render( scene, camera, textureNew );
+					renderer.render( sceneComp, orthoCamera, textureComp );
+					renderer.render( sceneScreen, orthoCamera, textureOld );
+					renderer.render( finalScene, orthoCamera );
 				//~ renderer.render( sceneScreen, orthoCamera );
 				
 			}
